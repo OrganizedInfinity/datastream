@@ -20,6 +20,10 @@ InvalidFirstByte::InvalidFirstByte(unsigned char byte) :
 InvalidContinuationByte::InvalidContinuationByte(unsigned char byte) :
 	MessageException(std::format("Invalid continuation byte of character: 0x{:x}", byte)) {}
 
+const char *ExpectedContinuationByte::what() const noexcept {
+	return "Expected continuation byte, got end of stream!";
+}
+
 UTF8IStream::UTF8IStream(std::streambuf *sb) : std::istream(sb) {}
 
 Codepoint UTF8IStream::Get() {
@@ -33,8 +37,12 @@ Codepoint UTF8IStream::Get() {
 		
 		cp &= static_cast<unsigned char>(~0) >> (bytes+1);
 
-		for ( ; bytes > 1; bytes-- ) {
-			auto byte = GetByte();
+		for ( unsigned char byte; bytes > 1; bytes-- ) {
+			try {
+				byte = GetByte();
+			} catch (EndOfStream&) {
+				throw ExpectedContinuationByte();
+			}
 			if ((byte & 0xc0) != 0x80)
 				throw InvalidContinuationByte(byte);
 			cp <<= 6;
@@ -55,21 +63,4 @@ unsigned char UTF8IStream::GetByte() {
 	return c;
 }
 
-unsigned char UTF8IStream::GetByte(BytePredicate p, Exception e) {
-	auto c = get();
-	if ( c == traits_type::eof() ) {
-		clear();
-		throw EndOfStream();
-	}
-
-	if (!p(c))
-		throw e;
-
-	return c;
-}
-
 } // namespace DS
-
-void Test() {
-	DS::UTF8IStream st{std::cin.rdbuf()};
-}

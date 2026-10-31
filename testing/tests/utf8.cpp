@@ -4,7 +4,6 @@
 
 #include "../util.hpp"
 #include "include/datastream.hpp"
-#include "testing/suite.hpp"
 
 #include <sstream>
 
@@ -98,4 +97,28 @@ ImplementTest(EndOfStream) {
 	DS::UTF8IStream stream{iss.rdbuf()};
 
 	EE(DS::EndOfStream&, static_cast<void>(stream.Get()));
+}
+
+ImplementTest(IncompleteCharacter) {
+	constexpr const char *tests[] = {
+		// 2 byte character missing 2nd byte
+		"\xC5",
+		// 3 byte character missing 2nd and 3rd byte
+		"\xE3",
+		// 3 byte character missing 3rd byte
+		"\xE3\x83",
+		// 4 byte character missing 2nd, 3rd, and 4th byte
+		"\xF0",
+		// 4 byte character missing 3rd and 4th byte
+		"\xF0\x9F",
+		// 4 byte character missing 4th byte
+		"\xF0\x9F\x92"
+	};
+
+	for ( auto incomplete : tests ) {
+		std::istringstream iss{incomplete};
+		DS::UTF8IStream stream{iss.rdbuf()};
+
+		EE(DS::ExpectedContinuationByte&, static_cast<void>(stream.Get()));
+	}
 }

@@ -1,12 +1,9 @@
 #pragma once
 
 #include <exception>
-#include <functional>
 #include <istream>
 
 namespace DS {
-
-using BytePredicate = std::function<bool(unsigned char)>;
 
 using Codepoint = uint_least32_t;
 constexpr Codepoint Failure = -1;
@@ -49,6 +46,12 @@ public:
 	explicit InvalidContinuationByte(unsigned char byte);
 };
 
+class ExpectedContinuationByte final : public virtual InvalidEncoding {
+public:
+	explicit ExpectedContinuationByte() = default;
+	virtual const char *what() const noexcept override;
+};
+
 class UTF8IStream : private std::istream {
 public:
 	explicit UTF8IStream(std::streambuf *sb);
@@ -59,8 +62,6 @@ public:
 private:
 	[[nodiscard]]
 	unsigned char	GetByte();
-	[[nodiscard]]
-	unsigned char	GetByte(BytePredicate p, Exception e);
 
 	pos_type Character{}, Row{}, Column{};
 };
