@@ -9,8 +9,7 @@
   pname = "datastream";
   version = lib.strings.trim (builtins.readFile ./version.txt);
   src = ./.;
-  nativeBuildInputs = [ meson ninja pkg-config ];
-  buildInputs = [ dumbtest ];
+  nativeBuildInputs = [ meson ninja pkg-config dumbtest ];
   mesonBuildType = "release";
   doCheck = true;
   meta = {
