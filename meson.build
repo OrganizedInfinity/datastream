@@ -19,17 +19,6 @@ libraryHeaders = [
   'include/datastream.hpp'
 ]
 
-tests = run_command('sh', '-c', 'ls -1 $MESON_SOURCE_ROOT/testing/tests | sed \'s/^/testing\\/tests\\//\'', check: true).stdout().strip().split('\n')
-
-testsuiteSources = [
-  'testing/runner.cpp',
-  'testing/suite.cpp',
-  'testing/suite.hpp',
-  'testing/util.cpp',
-  'testing/util.hpp',
-  tests
-]
-
 lib = shared_library(
   'datastream',
   librarySources,
@@ -49,9 +38,14 @@ pkg.generate(
   description: 'Stream parsing library with Unicode support for C++'
 )
 
+tests = [
+  'tests/utf8.cpp'
+]
+
 testsuite = executable(
   'dumbtest',
-  testsuiteSources,
+  tests,
+  dependencies: [ dependency('dumbtest') ],
   link_with: lib
 )
 

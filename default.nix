@@ -1,4 +1,5 @@
 {
+  dumbtest,
   lib,
   meson,
   ninja,
@@ -9,6 +10,7 @@
   version = lib.strings.trim (builtins.readFile ./version.txt);
   src = ./.;
   nativeBuildInputs = [ meson ninja pkg-config ];
+  buildInputs = [ dumbtest ];
   mesonBuildType = "release";
   doCheck = true;
   meta = {

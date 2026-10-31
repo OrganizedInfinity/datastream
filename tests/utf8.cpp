@@ -2,10 +2,11 @@
 // Tests the UTF-8 decoder
 //
 
-#include "../util.hpp"
+#include <dumbtest/util.hpp>
+#include <sstream>
+
 #include "include/datastream.hpp"
 
-#include <sstream>
 
 #define SuiteName UTF8
 DefineSuite();
