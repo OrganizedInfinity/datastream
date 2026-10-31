@@ -7,6 +7,7 @@ project(
 )
 
 fs = import('fs')
+pkg = import('pkgconfig')
 
 dependencies = []
 
@@ -29,12 +30,23 @@ testsuiteSources = [
   tests
 ]
 
-lib = static_library(
+lib = shared_library(
   'datastream',
   librarySources,
   dependencies: dependencies,
   include_directories: include_directories('include'),
-  cpp_args: '-DVERSION="' + fs.read('version.txt').strip() + '"'
+  cpp_args: '-DVERSION="' + fs.read('version.txt').strip() + '"',
+  install: true
+)
+
+install_headers(
+  libraryHeaders,
+  subdir: 'datastream'
+)
+
+pkg.generate(
+  lib,
+  description: 'Stream parsing library with Unicode support for C++'
 )
 
 testsuite = executable(
