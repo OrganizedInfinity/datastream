@@ -7,7 +7,6 @@
 
 #include "include/datastream.hpp"
 
-
 #define SuiteName UTF8
 DefineSuite();
 

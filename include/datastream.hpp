@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <exception>
 #include <istream>
 
@@ -20,7 +21,7 @@ private:
 	std::string Message;
 };
 
-class EndOfStream : public virtual Exception {
+class EndOfStream final : public virtual Exception {
 public:
 	explicit EndOfStream() = default;
 	virtual const char *what() const noexcept override;
@@ -46,6 +47,30 @@ public:
 class ExpectedContinuationByte final : public virtual InvalidEncoding {
 public:
 	explicit ExpectedContinuationByte() = default;
+	virtual const char *what() const noexcept override;
+};
+
+class InvalidSurrogateOrder final : public virtual InvalidEncoding {
+public:
+	explicit InvalidSurrogateOrder() = default;
+	virtual const char *what() const noexcept override;
+};
+
+class ExpectedLowSurrogate final : public virtual InvalidEncoding {
+public:
+	explicit ExpectedLowSurrogate() = default;
+	virtual const char *what() const noexcept override;
+};
+
+class InvalidSurrogate final : public virtual InvalidEncoding, public virtual MessageException {
+public:
+	InvalidSurrogate() = delete;
+	explicit InvalidSurrogate(uint_least32_t surrogate);
+};
+
+class ExpectedEvenByte final : public virtual InvalidEncoding {
+public:
+	explicit ExpectedEvenByte() = default;
 	virtual const char *what() const noexcept override;
 };
 
@@ -92,6 +117,31 @@ public:
 private:
 	[[nodiscard]]
 	virtual Codepoint GetCodepoint() override;
+};
+
+class UTF16IStream : public virtual IStream {
+protected:
+	[[nodiscard]]
+	virtual uint_least16_t GetWord() = 0;
+private:
+	[[nodiscard]]
+	virtual Codepoint GetCodepoint() final override;
+};
+
+class UTF16LEIStream final : public UTF16IStream {
+public:
+	explicit UTF16LEIStream(std::streambuf *sb, LineEnding le = LineEnding::LF);
+private:
+	[[nodiscard]]
+	virtual uint_least16_t GetWord() override;
+};
+
+class UTF16BEIStream final : public UTF16IStream {
+public:
+	explicit UTF16BEIStream(std::streambuf *sb, LineEnding le = LineEnding::LF);
+private:
+	[[nodiscard]]
+	virtual uint_least16_t GetWord() override;
 };
 
 }
