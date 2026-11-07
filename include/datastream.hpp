@@ -5,9 +5,6 @@
 
 namespace DS {
 
-using Codepoint = uint_least32_t;
-constexpr Codepoint Failure = -1;
-
 class Exception : public std::exception {
 protected:
 	Exception() = default;
@@ -52,18 +49,49 @@ public:
 	virtual const char *what() const noexcept override;
 };
 
-class UTF8IStream : private std::istream {
-public:
-	explicit UTF8IStream(std::streambuf *sb);
+using Codepoint = uint_least32_t;
+constexpr Codepoint Failure = -1;
 
+using Position = unsigned long;
+struct Location {
+	Position Character, Row, Column;
+};
+
+enum class LineEnding : Codepoint {
+	CR = '\r',
+	// use for CRLF line endings
+	LF = '\n',
+	Never = Failure
+};
+
+class IStream : protected std::istream {
+public:
+	// The location of the last read character
+	// Newlines are at column 0
+	[[nodiscard]]
+	Location	GetLocation();
 	// Extracts a single character
 	[[nodiscard]]
 	Codepoint	Get();
+protected:
+	IStream() = delete;
+	explicit IStream(std::streambuf *sb, LineEnding le);
+	[[nodiscard]]
+	unsigned char GetByte();
+	[[nodiscard]]
+	virtual Codepoint GetCodepoint() = 0;
+private:
+	Position Character = 0, Row = 1, Column = 0;
+	const LineEnding Ending;
+};
+
+class UTF8IStream final : public IStream {
+public:
+	explicit UTF8IStream(std::streambuf *sb, LineEnding le = LineEnding::LF);
+
 private:
 	[[nodiscard]]
-	unsigned char	GetByte();
-
-	pos_type Character{}, Row{}, Column{};
+	virtual Codepoint GetCodepoint() override;
 };
 
 }

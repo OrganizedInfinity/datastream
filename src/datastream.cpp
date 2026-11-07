@@ -1,6 +1,7 @@
 #include "datastream.hpp"
 
 #include <iostream>
+#include <utility>
 
 namespace DS {
 
@@ -24,9 +25,39 @@ const char *ExpectedContinuationByte::what() const noexcept {
 	return "Expected continuation byte, got end of stream!";
 }
 
-UTF8IStream::UTF8IStream(std::streambuf *sb) : std::istream(sb) {}
+IStream::IStream(std::streambuf *sb, LineEnding le) : std::istream(sb), Ending(le) {}
 
-Codepoint UTF8IStream::Get() {
+Location IStream::GetLocation() {
+	return {
+		.Character = Character,
+		.Row = Row,
+		.Column = Column
+	};
+}
+
+Codepoint IStream::Get() {
+	auto cp = GetCodepoint();
+	Column++;
+	Character++;
+	if (cp == std::to_underlying(Ending)) {
+		Row++;
+		Column = 0;
+	}
+	return cp;
+}
+
+UTF8IStream::UTF8IStream(std::streambuf *sb, LineEnding le) : IStream(sb, le) {}
+
+unsigned char IStream::GetByte() {
+	auto c = get();
+	if ( c == traits_type::eof() ) {
+		clear();
+		throw EndOfStream();
+	}
+	return c;
+}
+
+Codepoint UTF8IStream::GetCodepoint() {
 	Codepoint cp = GetByte();
 	if ( (cp & 0x80) == 0 )
 		return cp;
@@ -52,15 +83,6 @@ Codepoint UTF8IStream::Get() {
 		return cp;
 	}
 	throw InvalidFirstByte(cp);
-}
-
-unsigned char UTF8IStream::GetByte() {
-	auto c = get();
-	if ( c == traits_type::eof() ) {
-		clear();
-		throw EndOfStream();
-	}
-	return c;
 }
 
 } // namespace DS
