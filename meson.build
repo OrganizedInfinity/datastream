@@ -41,6 +41,7 @@ pkg.generate(
 
 tests = [
   'tests/location.cpp',
+  'tests/miscellaneous.cpp',
   'tests/predicate.cpp',
   'tests/utf16.cpp',
   'tests/utf8.cpp'

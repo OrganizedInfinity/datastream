@@ -175,7 +175,7 @@ Location IStream::GetLocation() {
 }
 
 Codepoint IStream::Get() {
-	auto cp = GetCodepoint();
+	auto cp = GetNext();
 	Column++;
 	Character++;
 	if ( cp == std::to_underlying(Ending) ) {
@@ -185,32 +185,64 @@ Codepoint IStream::Get() {
 	return cp;
 }
 
-template<bool Inverse>
-Codepoint IStream::Get(Codepoint predicate) {
+template<Inversion Inverse>
+Codepoint IStream::Get(const Codepoint& predicate) {
 	auto cp = Get();
-	if ( (cp == predicate) != Inverse )
+	if ( (cp == predicate) != std::to_underlying(Inverse) )
 		return cp;
 	
-	if constexpr (Inverse)
+	if constexpr (std::to_underlying(Inverse))
 		throw UnexpectedCharacter(predicate);
 	else
 		throw CharacterMismatch(predicate, cp);
 }
-template Codepoint IStream::Get<true>(Codepoint predicate);
-template Codepoint IStream::Get<false>(Codepoint predicate);
+template Codepoint IStream::Get<Inversion::Inverse>(const Codepoint& predicate);
+template Codepoint IStream::Get<Inversion::Noninverse>(const Codepoint& predicate);
 
-Codepoint IStream::Get(Predicate predicate) {
+Codepoint IStream::Get(const Predicate& predicate) {
 	auto cp = Get();
 	if (!predicate(cp))
 		throw PredicateViolation(cp);
 	return cp;
 }
 
-Codepoint IStream::Get(NamedPredicate predicate) {
+Codepoint IStream::Get(const NamedPredicate& predicate) {
 	auto cp = Get();
 	if (!predicate(cp))
 		throw NamedPredicateViolation(cp, predicate.Name);
 	return cp;
+}
+
+Codepoint IStream::Peek() noexcept {
+	try {
+		return Put(GetNext());
+	} catch (Exception&) {
+		return Failure;
+	};
+}
+
+template<Inversion Inverse>
+String IStream::GetWhile(const Codepoint& predicate) {
+	String s;
+	while ( (Peek() == predicate) != std::to_underlying(Inverse) )
+		s += Get();
+	return s;
+}
+template String IStream::GetWhile<Inversion::Inverse>(const Codepoint& predicate);
+template String IStream::GetWhile<Inversion::Noninverse>(const Codepoint& predicate);
+
+String IStream::GetWhile(const Predicate& predicate) {
+	String s;
+	while (predicate(Peek()))
+		s += Get();
+	return s;
+}
+
+String IStream::GetWhile(const NamedPredicate& predicate) {
+	String s;
+	while (predicate(Peek()))
+		s += Get();
+	return s;
 }
 
 unsigned char IStream::GetByte() {
@@ -220,6 +252,21 @@ unsigned char IStream::GetByte() {
 		throw EndOfStream();
 	}
 	return c;
+}
+
+Codepoint IStream::GetNext() {
+	return Putback.empty() ? GetCodepoint() : Pop();
+}
+
+Codepoint IStream::Pop() {
+	auto cp = Putback.back();
+	Putback.pop_back();
+	return cp;
+}
+
+Codepoint IStream::Put(Codepoint cp) {
+	Putback.push_back(cp);
+	return cp;
 }
 
 //

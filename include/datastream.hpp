@@ -1,16 +1,19 @@
 #pragma once
 
-#include <cstdint>
 #include <functional>
 #include <istream>
 
 namespace DS {
 
-using Codepoint = uint_least32_t;
+using Codepoint = char32_t;
 constexpr Codepoint Failure = -1;
+
+using String = std::basic_string<Codepoint>;
 
 using Position = unsigned long;
 struct Location {
+	bool operator==(const Location&) const = default;
+
 	Position Character, Row, Column;
 };
 
@@ -33,25 +36,39 @@ enum class LineEnding : Codepoint {
 	Never = Failure
 };
 
+enum class Inversion : bool {
+	Inverse = true,
+	Noninverse = false
+};
+
 class IStream : protected std::istream {
 public:
 	// The location of the last read character
 	// Newlines are at column 0
 	[[nodiscard]]
 	Location	GetLocation();
+
 	// Extracts a single character
 	[[nodiscard]]
 	Codepoint	Get();
 	// Throws exception when extracted character does not match the predicate (or if it does when inverse is true)
-	template<bool Inverse = false>
-	[[nodiscard]]
-	Codepoint	Get(Codepoint predicate);
+	template<Inversion Inverse = Inversion::Noninverse>
+	Codepoint	Get(const Codepoint& predicate);
 	// Throws a generic exception when predicate returns false
-	[[nodiscard]]
-	Codepoint	Get(Predicate predicate);
+	Codepoint	Get(const Predicate& predicate);
 	// Throws an exception including the predicate name, if the predicate returns false
+	Codepoint	Get(const NamedPredicate& predicate);
+
+	// Gets all characters matching the predicate
+	template<Inversion Inverse = Inversion::Noninverse>
+	String		GetWhile(const Codepoint& predicate);
+	String		GetWhile(const Predicate& predicate);
+	String		GetWhile(const NamedPredicate& predicate);
+
+	// Returns the next character, but does not advance the position,
+	// if an exception occurs, will return failure
 	[[nodiscard]]
-	Codepoint	Get(NamedPredicate predicate);
+	Codepoint	Peek() noexcept;
 protected:
 	IStream() = delete;
 	explicit IStream(std::streambuf *sb, LineEnding le);
@@ -60,8 +77,15 @@ protected:
 	[[nodiscard]]
 	virtual Codepoint GetCodepoint() = 0;
 private:
+	[[nodiscard]]
+	Codepoint GetNext();
+	[[nodiscard]]
+	Codepoint Pop();
+	Codepoint Put(Codepoint cp);
+
 	Position Character = 0, Row = 1, Column = 0;
 	const LineEnding Ending;
+	std::vector<Codepoint> Putback;
 };
 
 class UTF8IStream final : public IStream {
