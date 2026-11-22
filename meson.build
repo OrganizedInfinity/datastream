@@ -16,7 +16,8 @@ librarySources = [
 ]
 
 libraryHeaders = [
-  'include/datastream.hpp'
+  'include/datastream.hpp',
+  'include/exceptions.hpp'
 ]
 
 lib = shared_library(
@@ -40,6 +41,7 @@ pkg.generate(
 
 tests = [
   'tests/location.cpp',
+  'tests/predicate.cpp',
   'tests/utf16.cpp',
   'tests/utf8.cpp'
 ]

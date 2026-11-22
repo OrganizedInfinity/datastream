@@ -5,7 +5,7 @@
 #include <dumbtest/util.hpp>
 #include <sstream>
 
-#include "include/datastream.hpp"
+#include "include/exceptions.hpp"
 
 #define SuiteName UTF8
 DefineSuite();
@@ -96,7 +96,7 @@ ImplementTest(EndOfStream) {
 	std::istringstream iss{""};
 	DS::UTF8IStream stream{iss.rdbuf()};
 
-	EE(DS::EndOfStream&, static_cast<void>(stream.Get()));
+	EE(DS::Exceptions::EndOfStream&, static_cast<void>(stream.Get()));
 }
 
 ImplementTest(IncompleteCharacter) {
@@ -119,6 +119,6 @@ ImplementTest(IncompleteCharacter) {
 		std::istringstream iss{incomplete};
 		DS::UTF8IStream stream{iss.rdbuf()};
 
-		EE(DS::ExpectedContinuationByte&, static_cast<void>(stream.Get()));
+		EE(DS::Exceptions::ExpectedContinuationByte&, static_cast<void>(stream.Get()));
 	}
 }

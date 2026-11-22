@@ -3,31 +3,10 @@
 //
 
 #include <dumbtest/util.hpp>
-#include <iostream>
-#include "include/datastream.hpp"
+#include "util.hpp"
 
 #define SuiteName Location
 DefineSuite();
-
-class TestStream : public DS::IStream {
-public:
-	TestStream(DS::LineEnding le) : DS::IStream(std::cout.rdbuf(), le) {};
-	void SetCP(DS::Codepoint cp) {
-		Codepoint = cp;
-	}
-private:
-	DS::Codepoint Codepoint = DS::Failure;
-
-	[[nodiscard]]
-	virtual DS::Codepoint GetCodepoint() override {
-		if (Codepoint == DS::Failure)
-			throw DS::EndOfStream();
-		return Codepoint;
-	}
-};
-
-template<typename ...values>
-void Discard(values...) {}
 
 ImplementTest(Character) {
 	TestStream s{DS::LineEnding::Never};

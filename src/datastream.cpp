@@ -1,10 +1,113 @@
 #include "datastream.hpp"
+#include "exceptions.hpp"
 
 #include <cstdint>
-#include <iostream>
+#include <istream>
 #include <utility>
 
 namespace DS {
+using namespace Exceptions;
+
+static std::string UTF8Encode(Codepoint cp) noexcept {
+	// ascii characters
+	if (cp < 0x80)
+		return std::string{static_cast<char>(cp)};
+
+	std::string s;
+
+	auto bytes = 2;
+	if (cp > 0x7ff)
+		bytes++;
+	if (cp > 0xffff)
+		bytes++;
+	s += static_cast<char>(
+		~0 << (8 - bytes) |
+		cp >> (bytes - 1) * 6
+	);
+	for ( bytes--; bytes > 0; bytes-- )
+		s += static_cast<char>(
+			0x80 |
+			( cp >> (bytes - 1) * 6 & 0x3f )
+		);
+
+	return s;
+}
+
+// includes printable names for the ascii non-printable characters
+static std::string GetCodepointName(Codepoint cp) noexcept {
+	switch (cp) {
+	case '\x0':
+		return "null character";
+	case '\x1':
+		return "start of heading character";
+	case '\x2':
+		return "start of text character";
+	case '\x3':
+		return "end of text character";
+	case '\x4':
+		return "end of transmission character";
+	case '\x5':
+		return "enquiry character";
+	case '\x6':
+		return "acknowledge character";
+	case '\x7':
+		return "bell character";
+	case '\x8':
+		return "backspace character";
+	case '\x9':
+		return "horizontal tab character";
+	case '\xA':
+		return "new line character";
+	case '\xB':
+		return "vertical tab character";
+	case '\xC':
+		return "form feed character";
+	case '\xD':
+		return "carriage return character";
+	case '\xE':
+		return "shift out character";
+	case '\xF':
+		return "shift in character";
+	case '\x10':
+		return "data link escape character";
+	case '\x11':
+		return "device control character 1";
+	case '\x12':
+		return "device control character 2";
+	case '\x13':
+		return "device control character 3";
+	case '\x14':
+		return "device control character 4";
+	case '\x15':
+		return "negative acknowledge character";
+	case '\x16':
+		return "synchronous idle character";
+	case '\x17':
+		return "end of transmission block character";
+	case '\x18':
+		return "cancel character";
+	case '\x19':
+		return "end of medium character";
+	case '\x1A':
+		return "substitute character";
+	case '\x1B':
+		return "escape character";
+	case '\x1C':
+		return "file separator character";
+	case '\x1D':
+		return "group separator character";
+	case '\x1E':
+		return "record separator character";
+	case '\x1F':
+		return "unit separator character";
+	case '\x20':
+		return "space";
+	case '\x7F':
+		return "delete character";
+	default:
+		return "'" + UTF8Encode(cp) + "'";
+	}
+}
 
 MessageException::MessageException(std::string&& message) : Message(message) {}
 
@@ -41,6 +144,23 @@ const char *ExpectedEvenByte::what() const noexcept {
 	return "Expected second byte in UTF-16 byte pair";
 }
 
+CharacterMismatch::CharacterMismatch(Codepoint predicate, Codepoint mismatch) :
+	MessageException(std::format("Expected {}, got {}", GetCodepointName(predicate), GetCodepointName(mismatch))) {}
+
+UnexpectedCharacter::UnexpectedCharacter(Codepoint predicate) :
+	MessageException(std::format("Did not expect {} at this point", GetCodepointName(predicate))) {}
+
+PredicateViolation::PredicateViolation(Codepoint cp) :
+	MessageException(std::format("Predicate does not permit {} here", GetCodepointName(cp))) {}
+
+NamedPredicateViolation::NamedPredicateViolation(Codepoint cp, const char *predicateName) :
+	MessageException(std::format("Expected {}, got {}", predicateName, GetCodepointName(cp))) {}
+
+//
+// NamedPredicate
+//
+NamedPredicate::NamedPredicate(const char *name, Predicate&& predicate) : Predicate(predicate), Name(name) {}
+
 //
 // IStream
 //
@@ -58,10 +178,38 @@ Codepoint IStream::Get() {
 	auto cp = GetCodepoint();
 	Column++;
 	Character++;
-	if (cp == std::to_underlying(Ending)) {
+	if ( cp == std::to_underlying(Ending) ) {
 		Row++;
 		Column = 0;
 	}
+	return cp;
+}
+
+template<bool Inverse>
+Codepoint IStream::Get(Codepoint predicate) {
+	auto cp = Get();
+	if ( (cp == predicate) != Inverse )
+		return cp;
+	
+	if constexpr (Inverse)
+		throw UnexpectedCharacter(predicate);
+	else
+		throw CharacterMismatch(predicate, cp);
+}
+template Codepoint IStream::Get<true>(Codepoint predicate);
+template Codepoint IStream::Get<false>(Codepoint predicate);
+
+Codepoint IStream::Get(Predicate predicate) {
+	auto cp = Get();
+	if (!predicate(cp))
+		throw PredicateViolation(cp);
+	return cp;
+}
+
+Codepoint IStream::Get(NamedPredicate predicate) {
+	auto cp = Get();
+	if (!predicate(cp))
+		throw NamedPredicateViolation(cp, predicate.Name);
 	return cp;
 }
 
@@ -136,6 +284,7 @@ Codepoint UTF16IStream::GetCodepoint() {
 
 	return cp + 0x10000;
 }
+
 //
 // UTF16LEIStream
 //
